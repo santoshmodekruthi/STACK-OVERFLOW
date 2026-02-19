@@ -92,9 +92,3 @@ export default function TagsPage() {
     </Mainlayout>
   );
 }
-
-export async function getServerSideProps() {
-  return {
-    props: {},
-  };
-}

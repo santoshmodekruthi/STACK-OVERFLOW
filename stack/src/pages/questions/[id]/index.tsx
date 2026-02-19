@@ -15,11 +15,4 @@ const index = () => {
   );
 };
 
-export async function getServerSideProps(context: any) {
-  // This enables server-side rendering to prevent 404 on refresh
-  return {
-    props: {},
-  };
-}
-
 export default index;

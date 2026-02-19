@@ -29,7 +29,7 @@ const Navbar = ({ handleslidein }: any) => {
         </button>
         <div className="flex items-center gap-2 flex-grow">
           <Link href="/" className="px-3 py-1">
-            <img src="/logo.png" alt="Logo" className="h-6 w-auto" />
+            <img src="/STACK-OVERFLOW/logo.png" alt="Logo" className="h-6 w-auto" />
           </Link>
 
           <div className="hidden sm:flex gap-1">

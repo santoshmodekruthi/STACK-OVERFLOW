@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   output: 'export',
   trailingSlash: true,
   basePath: '/STACK-OVERFLOW',
-  assetPrefix: '/STACK-OVERFLOW',
+  assetPrefix: '/STACK-OVERFLOW/',
   env: {
     BACKEND_URL: process.env.BACKEND_URL,
   },

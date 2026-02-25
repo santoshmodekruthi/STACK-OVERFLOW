@@ -64,7 +64,6 @@ export default function SignUpPage() {
               <Button
                 variant="outline"
                 className="w-full bg-transparent text-sm"
-                onClick={() => toast.info("Google signup not implemented yet")}
               >
                 <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
                   <path
@@ -90,7 +89,6 @@ export default function SignUpPage() {
               <Button
                 variant="outline"
                 className="w-full bg-transparent text-sm"
-                onClick={() => toast.info("GitHub signup not implemented yet")}
               >
                 <svg
                   className="w-4 h-4 mr-2"
@@ -173,7 +171,6 @@ export default function SignUpPage() {
               <Button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700 text-sm"
-                disabled={loading}
               >
                 {loading ? "Signing up.." : "Sign up"}
               </Button>

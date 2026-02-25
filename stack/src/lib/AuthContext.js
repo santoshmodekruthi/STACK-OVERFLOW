@@ -26,18 +26,13 @@ export const AuthProvider = ({ children }) => {
         password,
       });
       const { data, token } = res.data;
-      const userWithToken = {...data, token};
-      localStorage.setItem("user", JSON.stringify(userWithToken));
-      setUser(userWithToken);
+      localStorage.setItem("user", JSON.stringify({...data,token}));
+      setUser(data);
       toast.success("Signup Successful");
-      return true;
     } catch (error) {
-      const msg = error.response?.data?.message || "Signup failed";
+      const msg = error.response?.data.message || "Signup failed";
       seterror(msg);
       toast.error(msg);
-      return false;
-    } finally {
-      setloading(false);
     }
   };
   const Login = async ({ email, password }) => {
@@ -49,18 +44,13 @@ export const AuthProvider = ({ children }) => {
         password,
       });
       const { data, token } = res.data;
-      const userWithToken = {...data, token};
-      localStorage.setItem("user", JSON.stringify(userWithToken));
-      setUser(userWithToken);
+      localStorage.setItem("user", JSON.stringify({...data,token}));
+      setUser(data);
       toast.success("Login Successful");
-      return true;
     } catch (error) {
-      const msg = error.response?.data?.message || "Login failed";
+      const msg = error.response?.data.message || "Login failed";
       seterror(msg);
       toast.error(msg);
-      return false;
-    } finally {
-      setloading(false);
     }
   };
   const Logout = () => {

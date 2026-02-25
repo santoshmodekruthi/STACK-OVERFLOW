@@ -52,6 +52,7 @@ const index = () => {
     tags: users?.tags || [],
   });
   const [newTag, setNewTag] = useState("");
+  const [friendEmail, setFriendEmail] = useState("");
 
   useEffect(() => {
     const fetchuser = async () => {
@@ -118,6 +119,38 @@ const index = () => {
 
   const currentUserId = user?._id;
   const isOwnProfile = id === currentUserId;
+
+  const handleAddFriend = async () => {
+    if (!user) {
+      toast.info("Please login to add friends");
+      return;
+    }
+    if (!friendEmail.trim()) {
+      toast.error("Enter a friend email");
+      return;
+    }
+    try {
+      const tokenUser = JSON.parse(localStorage.getItem("user") || "null");
+      const token = tokenUser?.token;
+      const res = await axiosInstance.post(
+        "/user/friends/add",
+        { friendEmail },
+        {
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        }
+      );
+      if (res.data.data) {
+        setusers(res.data.data);
+        toast.success("Friend added");
+        setFriendEmail("");
+      }
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Failed to add friend";
+      toast.error(msg);
+    }
+  };
   return (
     <Mainlayout>
       <div className="max-w-6xl">
@@ -290,6 +323,12 @@ const index = () => {
                 <span className="font-semibold">45</span>
                 <span className="text-gray-600 ml-1">bronze badges</span>
               </div>
+              <div className="flex items-center">
+                <span className="font-semibold">
+                  {users.friends ? users.friends.length : 0}
+                </span>
+                <span className="text-gray-600 ml-1">friends</span>
+              </div>
             </div>
           </div>
         </div>
@@ -307,6 +346,23 @@ const index = () => {
                 </div>
               </CardContent>
             </Card>
+            {isOwnProfile && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Friends</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Friend email"
+                      value={friendEmail}
+                      onChange={(e) => setFriendEmail(e.target.value)}
+                    />
+                    <Button onClick={handleAddFriend}>Add Friend</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
           <div className="space-y-6">
             <Card>

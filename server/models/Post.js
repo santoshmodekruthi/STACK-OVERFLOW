@@ -1,43 +1,26 @@
 import mongoose from "mongoose";
 
-const postSchema = mongoose.Schema({
-  author: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "user",
-    required: true
+const commentSchema = new mongoose.Schema(
+  {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "user", required: true },
+    text: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
   },
-  caption: { type: String, required: true },
-  images: { type: [String], default: [] }, // Array of image URLs
-  videos: { type: [String], default: [] }, // Array of video URLs
-  
-  // Engagement
-  likes: { 
-    type: [mongoose.Schema.Types.ObjectId],
-    ref: "user",
-    default: []
-  },
-  shares: {
-    type: Number,
-    default: 0
-  },
-  
-  // Comments
-  comments: [{
-    commentBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "user"
-    },
-    commentText: String,
-    likes: {
-      type: [mongoose.Schema.Types.ObjectId],
-      ref: "user",
-      default: []
-    },
-    createdAt: { type: Date, default: Date.now }
-  }],
-  
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
-});
+  { _id: true }
+);
 
-export default mongoose.models.post || mongoose.model("post", postSchema);
+const postSchema = new mongoose.Schema(
+  {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "user", required: true },
+    content: { type: String },
+    imageUrl: { type: String },
+    videoUrl: { type: String },
+    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "user" }],
+    shareCount: { type: Number, default: 0 },
+    comments: [commentSchema],
+  },
+  { timestamps: true }
+);
+
+export default mongoose.model("post", postSchema);
+

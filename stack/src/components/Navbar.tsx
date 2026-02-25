@@ -29,7 +29,7 @@ const Navbar = ({ handleslidein }: any) => {
         </button>
         <div className="flex items-center gap-2 flex-grow">
           <Link href="/" className="px-3 py-1">
-            <img src="/STACK-OVERFLOW/logo.png" alt="Logo" className="h-6 w-auto" />
+            <img src="/logo.png" alt="Logo" className="h-6 w-auto" />
           </Link>
 
           <div className="hidden sm:flex gap-1">
@@ -49,14 +49,8 @@ const Navbar = ({ handleslidein }: any) => {
               placeholder="Search..."
               className="w-full max-w-[600px] pl-9 pr-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-300"
             />
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-600" />
+            <Search className="absolute left-4 top-2.5 h-4 w-4 text-gray-600" />
           </form>
-          <Link
-            href="/ask"
-            className="hidden lg:block bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded hover:bg-blue-700 transition"
-          >
-            Ask Question
-          </Link>
         </div>
         <div className="flex items-center gap-2">
            {!hasMounted ? null : !user ? (

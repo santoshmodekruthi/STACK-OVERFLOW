@@ -17,9 +17,12 @@ const questionschema = mongoose.Schema(
         useranswered: String,
         userid: String,
         answeredon: { type: Date, default: Date.now },
+        upvote: { type: [String], default: [] },
+        downvote: { type: [String], default: [] },
+        rewardGivenForFiveUpvotes: { type: Boolean, default: false },
       },
     ],
   },
   { timestamp: true }
 );
-export default mongoose.models.question || mongoose.model("question", questionschema);
+export default mongoose.model("question", questionschema);

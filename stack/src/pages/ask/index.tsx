@@ -21,7 +21,6 @@ const index = () => {
     tags: [] as string[],
   });
   const [newTag, setNewTag] = useState("");
-  const [loading, setLoading] = useState(false);
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -43,7 +42,6 @@ const index = () => {
       router.push("/auth");
       return;
     }
-    setLoading(true);
     try {
       const res = await axiosInstance.post("/question/ask", {
         postquestiondata: {
@@ -61,8 +59,6 @@ const index = () => {
     } catch (error) {
       console.log(error);
       toast.error("Something went wrong");
-    } finally {
-      setLoading(false);
     }
   };
   const handleAddTag = (e: any) => {
@@ -175,7 +171,7 @@ const index = () => {
               </div>
 
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                <Button type="submit" className="bg-blue-600 text-white" disabled={loading}>
+                <Button type="submit" className="bg-blue-600 text-white">
                   Review your question
                 </Button>
               </div>

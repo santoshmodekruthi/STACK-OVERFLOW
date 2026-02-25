@@ -1,262 +1,195 @@
-import Post from "../models/Post.js";
-import User from "../models/User.js";
-import Reward from "../models/Reward.js";
+import mongoose from "mongoose";
+import Post from "../models/post.js";
+import User from "../models/auth.js";
 
-// Create a new post
+const getPostLimitForUser = (friendCount) => {
+  if (!friendCount || friendCount === 0) {
+    return 0;
+  }
+  if (friendCount === 2) {
+    return 2;
+  }
+  if (friendCount > 10) {
+    return Infinity;
+  }
+  return 1;
+};
+
 export const createPost = async (req, res) => {
   try {
-    const { caption, images, videos } = req.body;
-    const userId = req.userId; // from auth middleware
+    const userId = req.userid;
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
 
-    // Get user
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check friend requirement
-    if (user.friends.length === 0) {
-      return res.status(403).json({
-        message: "You must have at least 1 friend to post on the public space",
-      });
+    const friendCount = user.friends ? user.friends.length : 0;
+    const limit = getPostLimitForUser(friendCount);
+
+    if (limit === 0) {
+      return res
+        .status(403)
+        .json({ message: "You need friends before you can post in public space" });
     }
 
-    // Check daily post limit based on friends
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    let postLimit = 1;
-    if (user.friends.length >= 10) {
-      postLimit = Infinity;
-    } else if (user.friends.length >= 2) {
-      postLimit = user.friends.length;
-    } else {
-      postLimit = 1;
-    }
-
-    // Reset post count if last post was yesterday
-    if (!user.lastPostDate || user.lastPostDate < today) {
-      user.postsCreatedToday = 0;
-    }
-
-    if (user.postsCreatedToday >= postLimit) {
-      return res.status(403).json({
-        message: `You have reached your daily post limit of ${postLimit}`,
-      });
-    }
-
-    // Create post
-    const newPost = new Post({
-      author: userId,
-      caption,
-      images: images || [],
-      videos: videos || [],
-    });
-
-    await newPost.save();
-
-    // Update user post count
-    user.postsCreatedToday += 1;
-    user.lastPostDate = new Date();
-    await user.save();
-
-    // Award points for creating a post
-    await Reward.create({
-      userId,
-      actionType: "post_created",
-      pointsAdded: 2,
-      totalPointsAfterAction: user.points + 2,
-      postId: newPost._id,
-      description: "Points awarded for creating a post",
-    });
-
-    user.points += 2;
-    await user.save();
-
-    // Populate author details
-    const populatedPost = await Post.findById(newPost._id).populate(
-      "author",
-      "name avatar email"
+    const now = new Date();
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      0,
+      0,
+      0,
+      0
+    );
+    const endOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      23,
+      59,
+      59,
+      999
     );
 
-    return res.status(201).json({
-      message: "Post created successfully",
-      post: populatedPost,
+    const todaysPostCount = await Post.countDocuments({
+      userId,
+      createdAt: { $gte: startOfDay, $lte: endOfDay },
     });
+
+    if (Number.isFinite(limit) && todaysPostCount >= limit) {
+      return res.status(403).json({
+        message: `Daily post limit reached. You can post ${limit} time(s) per day.`,
+      });
+    }
+
+    const { content, imageUrl, videoUrl } = req.body;
+
+    if (!content && !imageUrl && !videoUrl) {
+      return res
+        .status(400)
+        .json({ message: "Content, image, or video is required" });
+    }
+
+    const post = await Post.create({
+      userId,
+      content,
+      imageUrl,
+      videoUrl,
+    });
+
+    const populated = await post.populate("userId", "name email");
+
+    return res.status(201).json({ data: populated });
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({ message: "Error creating post", error: error.message });
+    console.error(error);
+    return res.status(500).json({ message: "Something went wrong" });
   }
 };
 
-// Get all public posts (feed)
-export const getPublicFeed = async (req, res) => {
+export const listPosts = async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
-
     const posts = await Post.find()
-      .populate("author", "name avatar email points")
-      .populate({
-        path: "comments.commentBy",
-        select: "name avatar email",
-      })
-      .populate({
-        path: "likes",
-        select: "name avatar email",
-      })
       .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
-
-    const total = await Post.countDocuments();
-
-    return res.status(200).json({
-      posts,
-      totalPages: Math.ceil(total / limit),
-      currentPage: page,
-      total,
-    });
+      .populate("userId", "name email")
+      .lean();
+    return res.status(200).json({ data: posts });
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({ message: "Error fetching feed", error: error.message });
+    console.error(error);
+    return res.status(500).json({ message: "Something went wrong" });
   }
 };
 
-// Like a post
-export const likePost = async (req, res) => {
+export const toggleLike = async (req, res) => {
   try {
-    const { postId } = req.params;
-    const userId = req.userId;
+    const userId = req.userid;
+    const { id } = req.params;
 
-    const post = await Post.findById(postId);
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Post unavailable" });
+    }
+
+    const post = await Post.findById(id);
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
 
-    const isLiked = post.likes.includes(userId);
-
-    if (isLiked) {
-      // Unlike
-      post.likes = post.likes.filter((id) => id.toString() !== userId.toString());
-    } else {
-      // Like
+    const index = post.likes.findIndex(
+      (uid) => String(uid) === String(userId)
+    );
+    if (index === -1) {
       post.likes.push(userId);
-
-      // Award points to post author if post gets 5 likes
-      if (post.likes.length % 5 === 0) {
-        const author = await User.findById(post.author);
-        author.points += 5;
-        await author.save();
-
-        await Reward.create({
-          userId: post.author,
-          actionType: "post_liked",
-          pointsAdded: 5,
-          totalPointsAfterAction: author.points,
-          postId: postId,
-          description: `Post received ${post.likes.length} likes`,
-        });
-      }
+    } else {
+      post.likes.splice(index, 1);
     }
 
-    await post.save();
-
-    return res.status(200).json({
-      message: isLiked ? "Post unliked" : "Post liked successfully",
-      likes: post.likes.length,
-    });
+    const updated = await post.save();
+    return res.status(200).json({ data: updated });
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({ message: "Error liking post", error: error.message });
+    console.error(error);
+    return res.status(500).json({ message: "Something went wrong" });
   }
 };
 
-// Comment on a post
 export const addComment = async (req, res) => {
   try {
-    const { postId } = req.params;
-    const { commentText } = req.body;
-    const userId = req.userId;
+    const userId = req.userid;
+    const { id } = req.params;
+    const { text } = req.body;
 
-    const post = await Post.findById(postId);
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Post unavailable" });
+    }
+    if (!text || !text.trim()) {
+      return res.status(400).json({ message: "Comment text is required" });
+    }
+
+    const post = await Post.findById(id);
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
 
-    const comment = {
-      commentBy: userId,
-      commentText,
-    };
-
-    post.comments.push(comment);
-    await post.save();
-
-    // Populate the new comment
-    const populatedPost = await Post.findById(postId)
-      .populate({
-        path: "comments.commentBy",
-        select: "name avatar email",
-      });
-
-    return res.status(201).json({
-      message: "Comment added successfully",
-      comments: populatedPost.comments,
+    post.comments.push({
+      userId,
+      text,
     });
+
+    const updated = await post.save();
+    return res.status(200).json({ data: updated });
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({ message: "Error adding comment", error: error.message });
+    console.error(error);
+    return res.status(500).json({ message: "Something went wrong" });
   }
 };
 
-// Delete a post
-export const deletePost = async (req, res) => {
-  try {
-    const { postId } = req.params;
-    const userId = req.userId;
-
-    const post = await Post.findById(postId);
-    if (!post) {
-      return res.status(404).json({ message: "Post not found" });
-    }
-
-    // Check if user is the author
-    if (post.author.toString() !== userId.toString()) {
-      return res.status(403).json({ message: "Unauthorized to delete this post" });
-    }
-
-    // Deduct points for post creation
-    const user = await User.findById(userId);
-    user.points = Math.max(0, user.points - 2);
-    await user.save();
-
-    await Post.findByIdAndDelete(postId);
-
-    return res.status(200).json({ message: "Post deleted successfully" });
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json({ message: "Error deleting post", error: error.message });
-  }
-};
-
-// Share a post
 export const sharePost = async (req, res) => {
   try {
-    const { postId } = req.params;
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Post unavailable" });
+    }
 
-    const post = await Post.findById(postId);
+    const post = await Post.findById(id);
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
 
-    post.shares += 1;
-    await post.save();
-
-    return res.status(200).json({
-      message: "Post shared successfully",
-      shares: post.shares,
-    });
+    post.shareCount += 1;
+    const updated = await post.save();
+    return res.status(200).json({ data: updated });
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({ message: "Error sharing post", error: error.message });
+    console.error(error);
+    return res.status(500).json({ message: "Something went wrong" });
   }
 };
+
